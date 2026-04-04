@@ -7,20 +7,20 @@ Exa web search extension for the pi coding agent.
 1. Clone this repo:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/pi-exa-search.git ~/.pi/extensions/pi-exa-search
+git clone https://github.com/oeig-io/pi-exa-search.git ~/.pi/agent/extensions/pi-exa-search
 ```
 
 Or if already cloned:
 
 ```bash
-cd ~/.pi/extensions/pi-exa-search
+cd ~/.pi/agent/extensions/pi-exa-search
 git pull
 ```
 
 2. Install dependencies:
 
 ```bash
-cd ~/.pi/extensions/pi-exa-search
+cd ~/.pi/agent/extensions/pi-exa-search
 npm install
 ```
 
