@@ -1,0 +1,10 @@
+{
+	"name": "pi-exa-search",
+	"version": "1.0.0",
+	"description": "Exa web search extension for pi coding agent",
+	"main": "index.js",
+	"type": "module",
+	"dependencies": {
+		"exa-js": "^1.0.0"
+	}
+}
