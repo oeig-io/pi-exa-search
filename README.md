@@ -4,27 +4,38 @@ Exa web search extension for the pi coding agent.
 
 ## Installation
 
-1. Clone this repo into your code directory:
+Install by pointing pi at a local copy of this repo. This works fully offline and
+does not depend on git remaining reachable.
 
-```bash
-git clone https://github.com/oeig-io/pi-exa-search.git ~/code/oeig/pi-exa-search
-```
+1. Get the code onto the machine (clone, copy, `rsync`, etc.) at any path you like,
+   e.g. `~/code/oeig/pi-exa-search`.
 
-2. Symlink it into pi's extensions directory so pi can discover it:
+2. Install dependencies. **This step is required** — `node_modules/` is gitignored,
+   and pi does **not** auto-run `npm install` for local-path packages (only for
+   npm/git sources):
 
-```bash
-mkdir -p ~/.pi/agent/extensions
-ln -s ~/code/oeig/pi-exa-search ~/.pi/agent/extensions/pi-exa-search
-```
+   ```bash
+   cd ~/code/oeig/pi-exa-search
+   npm install
+   ```
 
-> From here on, `~/.pi/agent/extensions/pi-exa-search` resolves to your clone, so the paths below work as-is.
+3. Register the local path as a pi package:
 
-3. Install dependencies (required — `node_modules/` is gitignored, so a fresh clone won't have `exa-js`):
+   ```bash
+   pi install ~/code/oeig/pi-exa-search
+   ```
 
-```bash
-cd ~/.pi/agent/extensions/pi-exa-search
-npm install
-```
+   This adds the path to `~/.pi/agent/settings.json` under `packages` **without
+   copying** — pi loads the extension directly from your working copy, so edits
+   take effect on the next start (or `/reload`). Use `pi install -l <path>` to write
+   to project settings (`.pi/settings.json`) instead of user settings.
+
+To uninstall: `pi remove ~/code/oeig/pi-exa-search` (or edit `settings.json`).
+
+> **Use only one install method.** Do **not** also symlink the repo into
+> `~/.pi/agent/extensions/`. That directory is auto-discovered, so combining it
+> with `pi install` registers the `web_search` tool twice and pi will error with
+> a tool conflict. Pick `pi install` (recommended) **or** the symlink, never both.
 
 ## Configuration
 
@@ -44,11 +55,13 @@ the same mechanism opencode uses to provide "free" web search.
 
 ## Usage
 
-Start pi and the `web_search` tool will be automatically available:
+Once installed, start pi and the `web_search` tool is available automatically:
 
 ```bash
 pi
 ```
+
+Verify it loaded with `pi list` (the local path should appear under packages).
 
 The model can then use `web_search` for queries like:
 - "Search for the latest React release"
