@@ -4,20 +4,22 @@ Exa web search extension for the pi coding agent.
 
 ## Installation
 
-1. Clone this repo:
+1. Clone this repo into your code directory:
 
 ```bash
-git clone https://github.com/oeig-io/pi-exa-search.git ~/.pi/agent/extensions/pi-exa-search
+git clone https://github.com/oeig-io/pi-exa-search.git ~/code/oeig/pi-exa-search
 ```
 
-Or if already cloned:
+2. Symlink it into pi's extensions directory so pi can discover it:
 
 ```bash
-cd ~/.pi/agent/extensions/pi-exa-search
-git pull
+mkdir -p ~/.pi/agent/extensions
+ln -s ~/code/oeig/pi-exa-search ~/.pi/agent/extensions/pi-exa-search
 ```
 
-2. Install dependencies:
+> From here on, `~/.pi/agent/extensions/pi-exa-search` resolves to your clone, so the paths below work as-is.
+
+3. Install dependencies (required — `node_modules/` is gitignored, so a fresh clone won't have `exa-js`):
 
 ```bash
 cd ~/.pi/agent/extensions/pi-exa-search
