@@ -1,11 +1,18 @@
 # Exa API Expansion — Planning
 
+## Status: Implemented (2026-07-28)
+
+Both features described in this plan were implemented in the
+`expand-api-usage` branch and merged into `index.ts` / `README.md`. This
+document is retained as the design record; see git history for the change.
+
 ## Context
 
-The `pi-exa-search` extension currently provides only a thin wrapper around
+The `pi-exa-search` extension originally provided only a thin wrapper around
 `exa.search()` with `query`, `numResults`, and `type`. The SDK exposes a much
 richer API surface. This document captures the analysis and decisions from the
-2026-06-18 conversation about which features to add.
+2026-06-18 conversation about which features to add, and the 2026-07-28
+implementation that followed.
 
 ---
 
@@ -107,22 +114,30 @@ API key. These could be wired into the free fallback path in the future.
 
 ---
 
-## Implementation Notes
+## Implementation Notes (2026-07-28)
 
-- Both additions remain on the SDK path (require `EXA_API_KEY`). The MCP
-  fallback path (`mcp-free`) is unchanged.
-- The MCP path doesn't expose `getContents` or filter parameters — only the
-  SDK does, so free-tier users won't get these features. That's acceptable.
+- Both additions remain on the SDK path when an API key is present, but the
+  `fetch_page` MCP path was also wired up against the public
+  `web_fetch_exa` MCP tool. Free-tier users now get basic content extraction
+  out of the box; only advanced modes (highlights, subpages, summary) and
+  search filters still require an API key.
+- When a filter / advanced parameter is supplied on the free path, the
+  request still runs and the response includes `details.filtersIgnored: true`
+  so the caller can see the parameter was silently dropped.
 - Adding filter params is backward-compatible (all new fields are optional).
 - The existing `via: "sdk" | "mcp-free"` detail in responses continues to
   accurately report which path was taken.
+- The original `index.ts` was never typechecked (missing types, inconsistent
+  `details` shape across return branches, implicit `any` for the `pi`
+  parameter). The implementation also fixes those so a `tsc --noEmit` against
+  the right `package.json` deps passes cleanly.
 
 ---
 
-## Files to modify
+## Files modified
 
 | File | Change |
 |------|--------|
-| `index.ts` | Add `fetch_page` tool; extend `web_search` parameter schema with filters |
-| `README.md` | Document new parameters and tool |
-| `planning/exa-expanded-api-usage.md` | This file |
+| `index.ts` | Added `fetch_page` tool; extended `web_search` parameter schema with filters; fixed long-standing typecheck issues |
+| `README.md` | Documented both tools, all parameters, free-path behavior, and `filtersIgnored` semantics |
+| `planning/exa-expanded-api-usage.md` | This file (status banner + implementation notes added) |

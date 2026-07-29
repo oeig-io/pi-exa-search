@@ -53,46 +53,90 @@ public hosted MCP endpoint (`https://mcp.exa.ai/mcp`), which accepts
 unauthenticated requests. This is rate-limited but free and requires no signup —
 the same mechanism opencode uses to provide "free" web search.
 
-## Usage
+## Tools
 
-Once installed, start pi and the `web_search` tool is available automatically:
+The extension registers two tools with pi:
 
-```bash
-pi
-```
+### `web_search` — search the web
 
-Verify it loaded with `pi list` (the local path should appear under packages).
-
-The model can then use `web_search` for queries like:
-- "Search for the latest React release"
-- "Find documentation on Exa API"
-- "Look up current best practices for TypeScript"
-
-## Tool Parameters
+Search the web for current information, facts, news, or to verify up-to-date details.
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | query | string | Yes | - | The search query |
 | numResults | number | No | 5 | Max results to return (max: 100) |
 | type | string | No | "auto" | "auto", "keyword", or "neural" |
+| domains | string[] | No | - | Restrict to these domains. *Requires EXA_API_KEY; ignored on the free path.* |
+| excludeDomains | string[] | No | - | Exclude these domains. *Requires EXA_API_KEY; ignored on the free path.* |
+| startDate | string | No | - | ISO date (YYYY-MM-DD). Published on or after this. *Requires EXA_API_KEY; ignored on the free path.* |
+| endDate | string | No | - | ISO date (YYYY-MM-DD). Published on or before this. *Requires EXA_API_KEY; ignored on the free path.* |
+| category | string | No | - | Exa content category (e.g. `news`, `company`, `github`, `research paper`, `pdf`, `tweet`, `personal site`, `linkedin profile`, `financial report`). *Requires EXA_API_KEY; ignored on the free path.* |
+
+When filter parameters are supplied on the free path, the request still runs and
+`details.filtersIgnored` is set to `true` so the caller can see the filters were
+silently dropped.
+
+### `fetch_page` — extract page contents
+
+Fetch the full text of one or more URLs through Exa's server-side extraction.
+Use this when a site blocks curl, requires JavaScript to render, or you need
+clean markdown instead of raw HTML. **Prefer this over running `curl` in the
+bash tool** — it handles JS-rendered pages, bot detection, and PDF extraction
+server-side.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| urls | string[] | Yes | - | URLs to fetch. Batch multiple URLs into a single call. |
+| maxCharacters | number | No | 5000 | Max characters of text to return per URL. |
+| highlights | object | No | - | `{ query: string }` — extract only excerpts relevant to a query. *Requires EXA_API_KEY; ignored on the free path.* |
+| subpages | number | No | - | Max number of linked subpages to crawl per URL. *Requires EXA_API_KEY; ignored on the free path.* |
+| subpageTarget | string[] | No | - | Keywords to prioritize when selecting subpages. *Requires EXA_API_KEY; ignored on the free path.* |
+
+When advanced parameters are supplied on the free path, the request still runs
+with the basic text extraction and `details.filtersIgnored` is set to `true`.
+
+## Usage
+
+Once installed, start pi and both tools are available automatically:
+
+```bash
+pi
+```
+
+Verify they loaded with `pi list` (the local path should appear under packages).
+
+The model can then use these tools for queries like:
+- "Search for the latest React release" → `web_search`
+- "Find documentation on Exa API" → `web_search`
+- "Read the contents of <url>" → `fetch_page`
+- "What's on the iDempiere REST API docs page?" → `fetch_page`
 
 ## How It Works
 
-The extension registers a `web_search` tool with pi. When the LLM calls it:
+When the LLM calls `web_search` or `fetch_page`:
 
 1. Reads `EXA_API_KEY` from environment.
 2. **If a key is set** — calls the Exa API via the `exa-js` SDK (authenticated path).
-3. **If no key is set** — POSTs a JSON-RPC `tools/call` for `web_search_exa` to
-   Exa's public hosted MCP endpoint `https://mcp.exa.ai/mcp` (free, unauthenticated
-   path) and parses the SSE/JSON response.
-4. Formats results as markdown (title, URL, snippet).
-5. Returns formatted text to the LLM. The `details.via` field reports which path
-   was used (`sdk` or `mcp-free`).
+3. **If no key is set** — POSTs a JSON-RPC `tools/call` to Exa's public hosted
+   MCP endpoint `https://mcp.exa.ai/mcp` (free, unauthenticated path) and parses
+   the SSE/JSON response.
+   - `web_search` uses the `web_search_exa` MCP tool.
+   - `fetch_page` uses the `web_fetch_exa` MCP tool.
+4. Formats results as markdown and returns them to the LLM. The `details.via`
+   field reports which path was used (`sdk` or `mcp-free`).
 
 ### Why the free path works
 
 Exa runs a public MCP server at `https://mcp.exa.ai/mcp` that serves the
-`web_search_exa` tool without requiring an API key (it is rate-limited). When a
-key is available it can be passed as `?exaApiKey=...`. This is exactly how
-[opencode](https://github.com/sst/opencode) obtains free Exa search — see
-`packages/opencode/src/tool/mcp-websearch.ts` in that repo.
+`web_search_exa` and `web_fetch_exa` tools without requiring an API key (it is
+rate-limited). When a key is available it can be passed as `?exaApiKey=...`.
+This is exactly how [opencode](https://github.com/sst/opencode) obtains free
+Exa search — see `packages/opencode/src/tool/mcp-websearch.ts` in that repo.
+
+### Why `fetch_page` exists
+
+`curl` fails on many modern sites — JavaScript-rendered SPAs, Cloudflare
+blocklists, aggressive bot detection, redirect chains. Exa fetches pages from
+its own infrastructure and returns clean markdown, so it works where curl
+returns a JS shell or a 403. See `planning/exa-expanded-api-usage.md` for the
+full design notes.
