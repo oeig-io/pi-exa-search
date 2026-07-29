@@ -224,37 +224,56 @@ function parseExaTextContents(text: string): ContentResultItem[] {
 		}
 	}
 
-	// Fall back to parsing the readable text block(s). Each section begins with
-	// a heading (either `Title: ...` or a markdown `# ...` line) and includes a
-	// `URL: ...` line. Sections are separated by a blank line followed by a
-	// new heading line.
+	// Fall back to parsing the readable text block(s). MediaWiki-style responses
+	// emit a "title / URL / page chrome" header followed by a blank line and the
+	// actual content (which may itself start with a `# Heading` and contains no
+	// repeated URL). Older responses (and the web_search tool) emit one
+	// `Title: / URL: / Content:` block per result.
+	//
+	// Split into sections on a blank line that precedes a new heading-like line,
+	// then walk the sections: each section inherits the most recently seen URL
+	// and adds its body. The page title is the first `# ...` heading or the
+	// explicit `Title:` line in the first section that carries the URL.
 	const results: ContentResultItem[] = [];
-	// Split on a blank line that precedes a new heading-like line.
 	const sections = trimmed.split(/\n\s*\n(?=(?:Title:|#\s))/);
-	for (const section of sections) {
-		const urlMatch = section.match(/URL:\s*(\S+)/);
-		if (!urlMatch) continue;
-		// Title: either an explicit "Title: ..." line, or a leading markdown
-		// heading (`# ...`), or the first non-empty line of the section.
-		const titleLine = section.match(/^Title:\s*(.+)/m)?.[1]?.trim()
-			|| section.match(/^#\s+(.+)/m)?.[1]?.trim()
-			|| section.split("\n", 1)[0]?.trim();
-		// Body: everything after the URL line, stripped of optional
-		// "Author:" / "Published:" metadata lines and a leading
-		// "Content:" / "Text:" / "Highlights:" label.
-		const afterUrl = section.slice(section.indexOf(urlMatch[0]) + urlMatch[0].length);
-		let body = afterUrl
+	let currentUrl: string | undefined;
+	let currentTitle: string | undefined;
+	let bodyParts: string[] = [];
+	const flush = () => {
+		if (!currentUrl) return;
+		const body = bodyParts
+			.join("\n\n")
 			.split("\n")
 			.filter((l) => !/^\s*(Author|Published):/i.test(l))
 			.join("\n")
 			.replace(/^\s*(Content|Text|Highlights?):\s*/i, "")
 			.trim();
 		results.push({
-			title: titleLine || urlMatch[1],
-			url: urlMatch[1],
+			title: currentTitle || currentUrl,
+			url: currentUrl,
 			text: body || undefined,
 		});
+		bodyParts = [];
+	};
+	for (const section of sections) {
+		const urlMatch = section.match(/URL:\s*(\S+)/);
+		if (urlMatch) {
+			// A new URL starts a new result. Flush whatever we had.
+			flush();
+			currentUrl = urlMatch[1];
+			currentTitle =
+				section.match(/^Title:\s*(.+)/m)?.[1]?.trim()
+				|| section.match(/^#\s+(.+)/m)?.[1]?.trim()
+				|| section.split("\n", 1)[0]?.trim();
+		}
+		// Body: everything after the URL line (if any), else the whole section.
+		const startFrom = urlMatch
+			? section.indexOf(urlMatch[0]) + urlMatch[0].length
+			: 0;
+		const chunk = section.slice(startFrom).trim();
+		if (chunk) bodyParts.push(chunk);
 	}
+	flush();
 	return results;
 }
 
